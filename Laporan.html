@@ -152,6 +152,10 @@
       margin-top: 2px;
     }
 
+    .item-nom.minus {
+      color: var(--btn-danger);
+    }
+
     .btn-del {
       background: transparent;
       color: var(--btn-danger);
@@ -189,10 +193,10 @@
   </div>
 
   <label>Keterangan / Sumber (opsional):</label>
-  <input type="text" id="ket" placeholder="Contoh: Servis Laptop Budi">
+  <input type="text" id="ket" placeholder="Contoh: Beli Kopi / Servis Laptop">
 
-  <label>Nominal (Rp):</label>
-  <input type="text" id="nominal" placeholder="Contoh: 150.000" inputmode="numeric" oninput="formatInputRibuan(this)">
+  <label>Nominal (Rp) - Ketik '-' untuk Pengeluaran:</label>
+  <input type="text" id="nominal" placeholder="Contoh: -50.000 atau 150.000" inputmode="text" oninput="formatInputRibuan(this)">
 
   <button class="btn-save" id="btn-submit" onclick="tambahDraft()">+ Simpan ke List</button>
 
@@ -226,21 +230,32 @@
   muatDataCloud();
 
   function formatInputRibuan(elem) {
-    let raw = elem.value.replace(/\D/g, '');
+    let val = elem.value;
+    let isMinus = val.startsWith('-');
+    
+    let raw = val.replace(/\D/g, '');
     if (!raw) {
-      elem.value = '';
+      elem.value = isMinus ? '-' : '';
       return;
     }
-    elem.value = parseInt(raw, 10).toLocaleString('id-ID');
+
+    let formatted = parseInt(raw, 10).toLocaleString('id-ID');
+    elem.value = isMinus ? '-' + formatted : formatted;
   }
 
   function parseNominal(str) {
-    if (!str) return 0;
-    return parseFloat(str.replace(/\D/g, '')) || 0;
+    if (!str || str === '-') return 0;
+    let isMinus = str.startsWith('-');
+    let raw = str.replace(/\D/g, '');
+    let num = parseFloat(raw) || 0;
+    return isMinus ? -num : num;
   }
 
   function formatRupiah(num) {
-    return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+    let isMinus = num < 0;
+    let absNum = Math.abs(num);
+    let formatted = 'Rp ' + Math.round(absNum).toLocaleString('id-ID');
+    return isMinus ? '-' + formatted : formatted;
   }
 
   async function muatDataCloud() {
@@ -262,9 +277,9 @@
     const btnSubmit = document.getElementById('btn-submit');
     
     const nominal = parseNominal(nominalInput.value);
-    const ket = ketInput.value.trim() || 'Tanpa Keterangan';
+    const ket = ketInput.value.trim() || (nominal < 0 ? 'Pengeluaran' : 'Pemasukan');
 
-    if (nominal <= 0) return;
+    if (nominal === 0) return;
 
     const newItem = {
       action: "add",
@@ -321,11 +336,13 @@
     drafts.forEach(item => {
       const nom = Number(item.nominal);
       total += nom;
+      const isMinus = nom < 0;
+      
       html += `
         <div class="item-row">
           <div class="item-info">
             <span class="item-ket">${item.ket}</span>
-            <span class="item-nom">${formatRupiah(nom)}</span>
+            <span class="item-nom ${isMinus ? 'minus' : ''}">${formatRupiah(nom)}</span>
           </div>
           <button class="btn-del" onclick="hapusDraft(${item.id})">Hapus</button>
         </div>
@@ -333,7 +350,10 @@
     });
 
     container.innerHTML = html;
-    document.getElementById('total-akumulasi').innerText = formatRupiah(total);
+    
+    const totalElem = document.getElementById('total-akumulasi');
+    totalElem.innerText = formatRupiah(total);
+    totalElem.style.color = total < 0 ? 'var(--btn-danger)' : 'var(--text-main)';
   }
 </script>
 
