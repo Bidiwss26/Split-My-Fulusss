@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>List Catatan Sementara (Cloud Sync)</title>
+  <style>
+    :root {
+      --bg-body: #f4f6f8;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-input: #cbd5e1;
+      --bg-input: #ffffff;
+      --border-dashed: #e2e8f0;
+      --btn-bg: #10b981;
+      --btn-active: #059669;
+      --btn-danger: #ef4444;
+      --btn-theme: #e2e8f0;
+      --btn-theme-text: #0f172a;
+    }
+
+    body.dark {
+      --bg-body: #0b0f19;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-input: #334155;
+      --bg-input: #0f172a;
+      --border-dashed: #334155;
+      --btn-bg: #10b981;
+      --btn-active: #059669;
+      --btn-danger: #f87171;
+      --btn-theme: #334155;
+      --btn-theme-text: #f8fafc;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-body);
+      color: var(--text-main);
+      margin: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .card {
+      background: var(--bg-card);
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      box-sizing: border-box;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: var(--text-main);
+    }
+
+    .btn-theme {
+      background: var(--btn-theme);
+      color: var(--btn-theme-text);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-input);
+      background: var(--bg-input);
+      color: var(--text-main);
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      outline: 2px solid var(--btn-bg);
+    }
+
+    .btn-save {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      background: var(--btn-bg);
+      color: white;
+      border: none;
+      font-weight: bold;
+      font-size: 1rem;
+      margin-top: 14px;
+      cursor: pointer;
+    }
+
+    .btn-save:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .list-container {
+      margin-top: 20px;
+      border-top: 2px dashed var(--border-dashed);
+      padding-top: 14px;
+    }
+
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-dashed);
+    }
+
+    .item-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .item-ket {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .item-nom {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .btn-del {
+      background: transparent;
+      color: var(--btn-danger);
+      border: 1px solid var(--btn-danger);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .total-box {
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--bg-body);
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+    }
+
+    .loading-msg {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      padding: 15px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header-bar">
+    <h2>Catatan Sementara</h2>
+    <button class="btn-theme" onclick="toggleTheme()" id="theme-btn">🌙 Gelap</button>
+  </div>
+
+  <label>Keterangan / Sumber (opsional):</label>
+  <input type="text" id="ket" placeholder="Contoh: Servis Laptop Budi">
+
+  <label>Nominal (Rp):</label>
+  <input type="text" id="nominal" placeholder="Contoh: 150.000" inputmode="numeric" oninput="formatInputRibuan(this)">
+
+  <button class="btn-save" id="btn-submit" onclick="tambahDraft()">+ Simpan ke List</button>
+
+  <div class="list-container">
+    <div id="list-draft">
+      <div class="loading-msg">Mengambil data dari Cloud...</div>
+    </div>
+    
+    <div class="total-box">
+      <span>Total Belum Dicatat:</span>
+      <span id="total-akumulasi">Rp 0</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxR8sFdbJNWwvwpXD7zSI_RGrHxc0O_fs6FMDdtGn3Y1Pub3BxVVpLwFgMiB9IIyFXU/exec";
+
+  if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark');
+    document.getElementById('theme-btn').innerText = '☀️ Terang';
+  }
+
+  function toggleTheme() {
+    const isDark = document.body.classList.toggle('dark');
+    document.getElementById('theme-btn').innerText = isDark ? '☀️ Terang' : '🌙 Gelap';
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }
+
+  let drafts = [];
+  muatDataCloud();
+
+  function formatInputRibuan(elem) {
+    let raw = elem.value.replace(/\D/g, '');
+    if (!raw) {
+      elem.value = '';
+      return;
+    }
+    elem.value = parseInt(raw, 10).toLocaleString('id-ID');
+  }
+
+  function parseNominal(str) {
+    if (!str) return 0;
+    return parseFloat(str.replace(/\D/g, '')) || 0;
+  }
+
+  function formatRupiah(num) {
+    return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+  }
+
+  async function muatDataCloud() {
+    const container = document.getElementById('list-draft');
+    container.innerHTML = '<div class="loading-msg">Mengambil data dari Cloud...</div>';
+    
+    try {
+      const res = await fetch(SCRIPT_URL);
+      drafts = await res.json();
+      tampilkanList();
+    } catch (err) {
+      container.innerHTML = '<div class="loading-msg" style="color: red;">Gagal memuat data. Periksa koneksi/URL script.</div>';
+    }
+  }
+
+  async function tambahDraft() {
+    const ketInput = document.getElementById('ket');
+    const nominalInput = document.getElementById('nominal');
+    const btnSubmit = document.getElementById('btn-submit');
+    
+    const nominal = parseNominal(nominalInput.value);
+    const ket = ketInput.value.trim() || 'Tanpa Keterangan';
+
+    if (nominal <= 0) return;
+
+    const newItem = {
+      action: "add",
+      id: Date.now(),
+      ket: ket,
+      nominal: nominal
+    };
+
+    btnSubmit.disabled = true;
+    btnSubmit.innerText = "Menyimpan...";
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify(newItem)
+      });
+      
+      ketInput.value = '';
+      nominalInput.value = '';
+      await muatDataCloud();
+    } catch (err) {
+      alert("Gagal menyimpan data ke cloud!");
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.innerText = "+ Simpan ke List";
+    }
+  }
+
+  async function hapusDraft(id) {
+    if(!confirm("Hapus catatan ini?")) return;
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "delete", id: id })
+      });
+      await muatDataCloud();
+    } catch (err) {
+      alert("Gagal menghapus data dari cloud!");
+    }
+  }
+
+  function tampilkanList() {
+    const container = document.getElementById('list-draft');
+    let total = 0;
+
+    if (!drafts || drafts.length === 0) {
+      container.innerHTML = '<div class="loading-msg">Belum ada catatan sementara.</div>';
+      document.getElementById('total-akumulasi').innerText = 'Rp 0';
+      return;
+    }
+
+    let html = '';
+    drafts.forEach(item => {
+      const nom = Number(item.nominal);
+      total += nom;
+      html += `
+        <div class="item-row">
+          <div class="item-info">
+            <span class="item-ket">${item.ket}</span>
+            <span class="item-nom">${formatRupiah(nom)}</span>
+          </div>
+          <button class="btn-del" onclick="hapusDraft(${item.id})">Hapus</button>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    document.getElementById('total-akumulasi').innerText = formatRupiah(total);
+  }
+</script>
+
+</body>
+</html>
