@@ -274,7 +274,6 @@
   async function tambahDraft() {
     const ketInput = document.getElementById('ket');
     const nominalInput = document.getElementById('nominal');
-    const btnSubmit = document.getElementById('btn-submit');
     
     const nominal = parseNominal(nominalInput.value);
     const ket = ketInput.value.trim() || (nominal < 0 ? 'Pengeluaran' : 'Pemasukan');
@@ -288,37 +287,40 @@
       nominal: nominal
     };
 
-    btnSubmit.disabled = true;
-    btnSubmit.innerText = "Menyimpan...";
+    // 1. Tampilkan langsung di layar (Instan!)
+    drafts.push({ id: newItem.id, ket: newItem.ket, nominal: newItem.nominal });
+    tampilkanList();
 
+    // Reset Form Input
+    ketInput.value = '';
+    nominalInput.value = '';
+
+    // 2. Kirim data ke Cloud di background
     try {
       await fetch(SCRIPT_URL, {
         method: "POST",
         body: JSON.stringify(newItem)
       });
-      
-      ketInput.value = '';
-      nominalInput.value = '';
-      await muatDataCloud();
     } catch (err) {
-      alert("Gagal menyimpan data ke cloud!");
-    } finally {
-      btnSubmit.disabled = false;
-      btnSubmit.innerText = "+ Simpan ke List";
+      alert("Gagal menyimpan ke cloud, silakan refresh.");
     }
   }
 
   async function hapusDraft(id) {
     if(!confirm("Hapus catatan ini?")) return;
 
+    // 1. Hapus langsung dari layar (Instan!)
+    drafts = drafts.filter(item => item.id !== id);
+    tampilkanList();
+
+    // 2. Hapus dari Cloud di background
     try {
       await fetch(SCRIPT_URL, {
         method: "POST",
         body: JSON.stringify({ action: "delete", id: id })
       });
-      await muatDataCloud();
     } catch (err) {
-      alert("Gagal menghapus data dari cloud!");
+      alert("Gagal menghapus di cloud!");
     }
   }
 
